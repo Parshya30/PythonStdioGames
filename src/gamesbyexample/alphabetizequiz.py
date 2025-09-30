@@ -1,74 +1,154 @@
-"""Alphabetize Quiz, by Al Sweigart al@inventwithpython.com
-A time-based quiz game to see how fast you can alphabetize letters.
-This and other games are available at https://nostarch.com/XX
-Tags: short, game, word"""
-__version__ = 0
+"""Alphabetize Quiz - Advanced Version
+By Al Sweigart (improved by ChatGPT)
+
+A time-based quiz game to see how fast you can alphabetize letters, words, or numbers.
+Now with multiple difficulty levels, countdown timer, and high-score saving!
+"""
+
 import random
 import time
+import os
+from colorama import Fore, Style, init
 
-# Set up the constants:
-# (!) Try changing these constants:
-QUESTION_SIZE = 5  # Each question shows 5 letters to alphabetize.
-QUIZ_DURATION = 30  # The quiz lasts 30 seconds.
+init(autoreset=True)  # For colored output
 
+# Constants (you can tweak these)
+QUESTION_SIZE = 5
+QUIZ_DURATION = 30
 ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-REVERSE_ALPHABET = 'ZYXWVUTSRQPONMLKJIHGFEDCBA'
+NUMBERS = [str(i) for i in range(10)]
+HIGHSCORE_FILE = "alphabet_quiz_highscore.txt"
 
 
 def main():
-    # Fancy animation for the title:
-    slowPrint(ALPHABET, 0.02)  # (!) Try changing 0.02 to 0.0 or 1.0.
-    slowPrint('    Alphabetize Quiz', 0.02)
-    slowPrint(REVERSE_ALPHABET, 0.02)
-    time.sleep(0.5)
+    showIntro()
 
-    print('''By Al Sweigart al@inventwithpython.com
+    # Difficulty selection
+    difficulty = chooseDifficulty()
 
-Enter the alphabetical order of the letters shown as fast
-as possible. Try to alphabetize as many as possible in {} seconds!
+    # Highscore loading
+    highscore = loadHighScore(difficulty)
 
-Example:
-    P M O T Q  <-- The letters.
-    > mopqt    <-- Enter the correct alphabetical order.
-    '''.format(QUIZ_DURATION))
-    input('Press Enter to begin...')
+    input(Fore.CYAN + "\nPress Enter to begin the quiz...")
 
-    startTime = time.time()  # Get the current time for the start time.
-    numCorrect = 0  # Number of questions answered correctly.
-    while True:  # Main game loop.
-        # Come up with letters for the question:
-        quizLetters = random.sample(ALPHABET, QUESTION_SIZE)
-        print(' '.join(quizLetters))
-        response = input('> ').upper()
-        response = response.replace(' ', '')  # Remove spaces.
+    startTime = time.time()
+    numCorrect = 0
+    numAttempted = 0
 
-        # Check if the quiz's time is up:
-        if time.time() - 30 > startTime:
-            print("TIME'S UP!")
+    while True:
+        # Check if time is up
+        elapsed = time.time() - startTime
+        if elapsed >= QUIZ_DURATION:
+            print(Fore.RED + "\nTIME'S UP!")
             break
 
-        # Check if the response is correct:
-        if list(response) == sorted(quizLetters):
-            print('    Correct!\n')
-            numCorrect += 1  # Increase the score by 1.
-        else:
-            print('    Sorry, wrong. :(\n')
+        # Generate question
+        quizLetters = generateQuestion(difficulty)
+        print(Fore.YELLOW + " ".join(quizLetters))
 
-    # After the loop exits, the quiz is over. Show the final score:
-    print('In {} seconds you'.format(QUIZ_DURATION))
-    print('got {} correct!'.format(numCorrect))
-    print('Thanks for playing!')
+        # Countdown display
+        remaining = int(QUIZ_DURATION - elapsed)
+        print(Fore.MAGENTA + f"[{remaining}s left]")
+
+        response = input("> ").upper().replace(" ", "")
+        numAttempted += 1
+
+        if list(response) == sorted(quizLetters):
+            print(Fore.GREEN + "   ✅ Correct!\n")
+            numCorrect += 1
+        else:
+            print(Fore.RED + "   ❌ Wrong. Answer was:", "".join(sorted(quizLetters)), "\n")
+
+    # Final score
+    accuracy = (numCorrect / numAttempted * 100) if numAttempted else 0
+    print(Style.BRIGHT + f"\n⏱ In {QUIZ_DURATION} seconds you attempted {numAttempted} questions.")
+    print(Fore.CYAN + f"✔ Correct: {numCorrect}")
+    print(Fore.RED + f"✘ Wrong: {numAttempted - numCorrect}")
+    print(Fore.YELLOW + f"🎯 Accuracy: {accuracy:.2f}%")
+
+    # Save high score if beaten
+    if numCorrect > highscore:
+        print(Fore.GREEN + f"🏆 NEW HIGHSCORE! You beat the previous best of {highscore}.")
+        saveHighScore(difficulty, numCorrect)
+    else:
+        print(Fore.CYAN + f"Your highscore for {difficulty} is still {highscore}.")
+
+    print(Fore.BLUE + "\nThanks for playing!")
+
+
+def showIntro():
+    """Prints the intro animation and instructions."""
+    slowPrint(ALPHABET, 0.01)
+    slowPrint("    Alphabetize Quiz - Advanced", 0.02)
+    slowPrint(ALPHABET[::-1], 0.01)
+    time.sleep(0.3)
+
+    print('''\nWelcome to the Alphabetize Quiz!
+Enter the correct alphabetical (or numerical) order of the shown characters.
+Try to get as many correct as possible in the given time!\n''')
+
+
+def chooseDifficulty():
+    """Let the user select difficulty type."""
+    print("\nChoose Difficulty:")
+    print("1. Letters (easy)")
+    print("2. Numbers (medium)")
+    print("3. Words (hard)")
+
+    while True:
+        choice = input("> ").strip()
+        if choice == "1":
+            return "letters"
+        elif choice == "2":
+            return "numbers"
+        elif choice == "3":
+            return "words"
+        else:
+            print("Invalid choice. Enter 1, 2, or 3.")
+
+
+def generateQuestion(difficulty):
+    """Generate a question based on difficulty."""
+    if difficulty == "letters":
+        return random.sample(ALPHABET, QUESTION_SIZE)
+    elif difficulty == "numbers":
+        return random.sample(NUMBERS, QUESTION_SIZE)
+    elif difficulty == "words":
+        return random.sample(
+            ["CAT", "DOG", "MOON", "TREE", "PYTHON", "ZEBRA", "APPLE", "MANGO", "QUIZ", "CODE"],
+            QUESTION_SIZE
+        )
 
 
 def slowPrint(text, pauseAmount=0.1):
-    """Slowly print out the characters in text one at a time."""
+    """Slowly print out characters."""
     for character in text:
-        # Set flush=True here so the text is immediately printed:
-        print(character, flush=True, end='')  # end='' means no newline.
-        time.sleep(pauseAmount)  # Pause in between each character.
-    print()  # Print a newline.
+        print(character, flush=True, end="")
+        time.sleep(pauseAmount)
+    print()
 
 
-# If this program was run (instead of imported), run the game:
-if __name__ == '__main__':
+def loadHighScore(difficulty):
+    """Load highscore for selected difficulty."""
+    if not os.path.exists(HIGHSCORE_FILE):
+        return 0
+    with open(HIGHSCORE_FILE, "r") as f:
+        scores = dict(line.strip().split(":") for line in f if ":" in line)
+    return int(scores.get(difficulty, 0))
+
+
+def saveHighScore(difficulty, score):
+    """Save highscore for selected difficulty."""
+    scores = {}
+    if os.path.exists(HIGHSCORE_FILE):
+        with open(HIGHSCORE_FILE, "r") as f:
+            scores = dict(line.strip().split(":") for line in f if ":" in line)
+    scores[difficulty] = str(score)
+    with open(HIGHSCORE_FILE, "w") as f:
+        for k, v in scores.items():
+            f.write(f"{k}:{v}\n")
+
+
+# Run game
+if __name__ == "__main__":
     main()

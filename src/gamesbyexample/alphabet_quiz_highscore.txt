@@ -1,0 +1,3 @@
+letters:3
+I have enhanced this code making it more interactive
+"Implement Immediate Time-Out Response in Alphabetize Quiz Game"
