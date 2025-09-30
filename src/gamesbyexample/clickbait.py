@@ -1,4 +1,6 @@
 import random
+import tkinter as tk
+from tkinter import messagebox, scrolledtext, filedialog
 
 # Constants
 OBJECT_PRONOUNS = ['Her', 'Him', 'Them']
@@ -15,68 +17,8 @@ WHEN = ['Soon', 'This Year', 'Later Today', 'RIGHT NOW', 'Next Week']
 WEBSITES = ['wobsite', 'blag', 'Facebuuk', 'Googles', 'Facesbook', 'Tweedie', 'Pastagram']
 
 
-def main():
-    print('Clickbait Headline Generator')
-    print('By Al Sweigart al@inventwithpython.com\n')
-
-    print("Let's generate some irresistible clickbait headlines to boost those ad clicks!")
-
-    while True:
-        number_of_headlines = get_number_of_headlines()
-        headlines = [generate_random_headline() for _ in range(number_of_headlines)]
-
-        print("\nHere are your clickbait headlines:\n")
-        for idx, headline in enumerate(headlines, 1):
-            print(f"{idx}. {headline}")
-
-        # Optionally save headlines to a file
-        if prompt_yes_no("\nWould you like to save these headlines to a file? (y/n): "):
-            save_headlines(headlines)
-
-        print()
-        website = random.choice(WEBSITES)
-        when = random.choice(WHEN).lower()
-        print(f"Post these to our {website} {when} or you’re fired!")
-
-        if not prompt_yes_no("\nGenerate more headlines? (y/n): "):
-            print("\nThanks for using the Clickbait Headline Generator. Stay sneaky!")
-            break
-
-
-def get_number_of_headlines():
-    """Prompt user until a valid number is entered."""
-    while True:
-        response = input("Enter the number of clickbait headlines to generate: ")
-        if response.isdecimal() and int(response) > 0:
-            return int(response)
-        print("Please enter a positive whole number.")
-
-
-def prompt_yes_no(prompt):
-    """Prompt user with yes/no question, return True for yes."""
-    while True:
-        response = input(prompt).strip().lower()
-        if response in ('y', 'yes'):
-            return True
-        elif response in ('n', 'no'):
-            return False
-        print("Please enter 'y' or 'n'.")
-
-
-def save_headlines(headlines):
-    """Save the generated headlines to a text file."""
-    filename = "clickbait_headlines.txt"
-    try:
-        with open(filename, 'a') as file:
-            file.write('\n'.join(headlines) + '\n')
-        print(f"Headlines saved to {filename}")
-    except Exception as e:
-        print(f"Error saving file: {e}")
-
-
 def generate_random_headline():
-    """Randomly pick and generate one of the headline types."""
-    clickbait_type = random.randint(1, 10)  # Increased variety with 10 types
+    clickbait_type = random.randint(1, 10)
 
     if clickbait_type == 1:
         return generate_are_millenials_killing_headline()
@@ -100,8 +42,7 @@ def generate_random_headline():
         return generate_secret_revealed_headline()
 
 
-# Headline generator functions
-
+# Headline generators
 def generate_are_millenials_killing_headline():
     noun = random.choice(NOUNS)
     return f"Are Millennials Killing the {noun} Industry?"
@@ -176,5 +117,78 @@ def generate_secret_revealed_headline():
     return f"Secret Revealed: Why {state} {plural_noun} Are Taking Over the World"
 
 
+class ClickbaitGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Clickbait Headline Generator")
+
+        # Title label
+        title = tk.Label(root, text="Clickbait Headline Generator", font=("Arial", 18, "bold"))
+        title.pack(pady=10)
+
+        # Instruction label
+        instr = tk.Label(root, text="Enter the number of headlines to generate:")
+        instr.pack()
+
+        # Input for number of headlines
+        self.num_input = tk.Entry(root, width=10, justify='center')
+        self.num_input.pack(pady=5)
+        self.num_input.insert(0, "5")  # default value
+
+        # Generate button
+        generate_btn = tk.Button(root, text="Generate Headlines", command=self.generate_headlines)
+        generate_btn.pack(pady=5)
+
+        # ScrolledText widget for output
+        self.output_area = scrolledtext.ScrolledText(root, width=70, height=15, wrap=tk.WORD, font=("Helvetica", 12))
+        self.output_area.pack(padx=10, pady=10)
+
+        # Save button
+        save_btn = tk.Button(root, text="Save Headlines to File", command=self.save_headlines)
+        save_btn.pack(pady=5)
+
+        # Quit button
+        quit_btn = tk.Button(root, text="Quit", command=root.quit)
+        quit_btn.pack(pady=5)
+
+    def generate_headlines(self):
+        self.output_area.delete('1.0', tk.END)  # clear previous output
+        num_str = self.num_input.get()
+
+        if not num_str.isdecimal() or int(num_str) <= 0:
+            messagebox.showerror("Invalid Input", "Please enter a positive integer for number of headlines.")
+            return
+
+        num = int(num_str)
+        headlines = [generate_random_headline() for _ in range(num)]
+        for i, hl in enumerate(headlines, start=1):
+            self.output_area.insert(tk.END, f"{i}. {hl}\n")
+
+        website = random.choice(WEBSITES)
+        when = random.choice(WHEN).lower()
+        self.output_area.insert(tk.END, f"\nPost these to our {website} {when} or you’re fired!\n")
+
+    def save_headlines(self):
+        content = self.output_area.get('1.0', tk.END).strip()
+        if not content:
+            messagebox.showinfo("Nothing to Save", "Please generate headlines first before saving.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+            title="Save Headlines As"
+        )
+        if file_path:
+            try:
+                with open(file_path, 'w') as f:
+                    f.write(content)
+                messagebox.showinfo("Saved", f"Headlines saved to:\n{file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save file: {e}")
+
+
 if __name__ == '__main__':
-    main()
+    root = tk.Tk()
+    app = ClickbaitGUI(root)
+    root.mainloop()
